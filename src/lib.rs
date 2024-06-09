@@ -107,7 +107,7 @@ mod dao {
             description: String,
             mut payment: Bucket,
             creator: ComponentAddress,
-        ) -> u128 {
+        ) -> (u128, Bucket, Bucket)  {
             let proposal_id = self.proposal_count;
 
             let our_share = payment.take(1);
@@ -129,8 +129,83 @@ mod dao {
 
             info!("your proposal has been submitted with id : {}", proposal_id);
 
+            (proposal_id, self.insider_pass.take(0), payment)
+        }
+
+        pub fn show_creator(creator: ComponentAddress) -> ComponentAddress {
+            creator
+        }
+
+        pub fn put_xrd_in_treasury(&mut self, mut payment: Bucket) -> (Bucket, Bucket) {
+            let our_share = payment.take(1);
+            self.collected_xrd_treasury.put(our_share);
+            (self.insider_pass.take(0), payment)
+        }
+
+        // pub fn get_xrd_treasury(&self) -> Vault {
+        //     self.collected_xrd_treasury
+        // }
+
+        pub fn create_a_proposal_using_xrd(
+            &mut self,
+            description: String,
+            mut payment: Bucket,
+            creator: ComponentAddress,
+        ) -> (u128, Bucket, Bucket) {
+            let proposal_id = self.proposal_count;
+
+            let our_share = payment.take(1);
+            self.collected_xrd_treasury.put(our_share);
+
+            // our_share.burn();
+
+            self.proposals.insert(
+                proposal_id,
+                Proposal {
+                    description,
+                    votes_for: Decimal::zero(),
+                    votes_against: Decimal::zero(),
+                    creator,
+                },
+            );
+
+            self.proposal_count += 1;
+
+            info!("your proposal has been submitted with id : {}", proposal_id);
+
+            (proposal_id, self.insider_pass.take(0), payment)
+        }
+
+        pub fn create_a_proposal_using_xrd_2(
+            &mut self,
+            description: String,
+            creator: ComponentAddress,
+        ) -> u128 {
+            let proposal_id = self.proposal_count;
+
+            // let our_share = payment.take(1);
+            // self.collected_xrd_treasury.put(our_share);
+
+            // our_share.burn();
+
+            self.proposals.insert(
+                proposal_id,
+                Proposal {
+                    description,
+                    votes_for: Decimal::zero(),
+                    votes_against: Decimal::zero(),
+                    creator,
+                },
+            );
+
+            self.proposal_count += 1;
+
+            info!("your proposal has been submitted with id : {}", proposal_id);
+
             proposal_id
         }
+
+        
 
         pub fn get_my_created_proposals(&self, creator: ComponentAddress) -> Vec<(u128, Proposal)> {
             self.proposals
@@ -183,16 +258,17 @@ mod dao {
             amount: Decimal,
             proposal_id: u128,
             support: bool,
-        ) {
+        ) -> (Bucket, Bucket) {
             let proposal = self.proposals.get_mut(&proposal_id).unwrap();
             let our_share = payment.take(amount);
             self.insider_pass.put(our_share);
             // our_share.burn();
             if support {
-                proposal.votes_for += 10000 * Decimal::one();   
+                proposal.votes_for += 10000 * Decimal::one();
             } else {
                 proposal.votes_against += 10000 * Decimal::one();
             }
+            (self.insider_pass.take(0), payment)
         }
 
         pub fn results(&self, proposal_id: u128) -> Option<(Decimal, Decimal)> {
@@ -219,7 +295,7 @@ mod dao {
 //resim publish .
 
 //instantiate
-//resim call-function package_sim1pk3cmat8st4ja2ms8mjqy2e9ptk8y6cx40v4qnfrkgnxcp2krkpr92 Dao instantiate_dao 10  
+//resim call-function package_sim1pk3cmat8st4ja2ms8mjqy2e9ptk8y6cx40v4qnfrkgnxcp2krkpr92 Dao instantiate_dao 10
 
 //component balance
 //resim show component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2
@@ -236,16 +312,27 @@ mod dao {
 //call buy_insider_pass_token
 //resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 buy_insider_pass_token resource_sim1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxakj8n3:10
 
-
+//resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 put_xrd_in_treasury resource_sim1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxakj8n3:1
 
 //call_create_a_proposal
 //resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 create_a_proposal "I want this platform to bring REWARD TOKENS for vote casters" resource_sim1t4h3kupr5l95w6ufpuysl0afun0gfzzw7ltmk7y68ks5ekqh4cpx9w:1 account_sim1c956qr3kxlgypxwst89j9yf24tjc7zxd4up38x37zr6q4jxdx9rhma
 
-//another proposal
-//resim call-method component_sim1crkp7q8sfhg7xa0xvqtdjezltj3hams2hrk4ztzqs2c90sy0cslv6a create_a_proposal "introduce NEW TOKEN STANDARD"
+//call get_my_created_proposals 
+//resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 get_my_created_proposals account_sim1c956qr3kxlgypxwst89j9yf24tjc7zxd4up38x37zr6q4jxdx9rhma
+
+//another proposal using XRD
+//resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 create_a_proposal_using_xrd "introduce NEW TOKEN STANDARD" resource_sim1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxakj8n3:1 account_sim1c956qr3kxlgypxwst89j9yf24tjc7zxd4up38x37zr6q4jxdx9rhma
 
 //call_cast_a_vote
-//resim call-method component_sim1crkp7q8sfhg7xa0xvqtdjezltj3hams2hrk4ztzqs2c90sy0cslv6a cast_a_vote 0 true
+//resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 cast_a_vote resource_sim1t4h3kupr5l95w6ufpuysl0afun0gfzzw7ltmk7y68ks5ekqh4cpx9w:1 1 0 true
+
+//(
+//     &mut self,
+//     mut payment: Bucket,
+//     amount: Decimal,
+//     proposal_id: u128,
+//     support: bool,
+// ) 
 
 //call_results
-//resim call-method component_sim1crkp7q8sfhg7xa0xvqtdjezltj3hams2hrk4ztzqs2c90sy0cslv6a results 0
+//resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 results 0
