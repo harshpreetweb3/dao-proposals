@@ -1,23 +1,49 @@
 use scrypto::prelude::*;
 
-
 #[derive(ScryptoSbor)]
 pub struct Proposal {
     description: String,
     votes_for: Decimal,
     votes_against: Decimal,
+    creator: ComponentAddress,
+}
+
+#[derive(ScryptoSbor)]
+pub struct StatusOfGovToken {
+    pub price: Decimal,
+    pub amount: Decimal,
 }
 
 #[blueprint]
 mod dao {
+
+    enable_method_auth! {
+        // decide which methods are public and which are restricted to the component's owner
+        methods {
+            buy_insider_pass_token => PUBLIC;
+            get_status_of_governance_token => PUBLIC;
+            cast_a_vote => PUBLIC;
+            create_a_proposal => PUBLIC;
+            get_first_insider_pass => PUBLIC;
+            results => PUBLIC;
+            set_price => restrict_to: [OWNER];
+            withdraw_earnings => restrict_to: [OWNER];
+        }
+    }
+
     struct Dao {
-        sample_vault: Vault,
+        insider_pass: Vault,
         proposals: HashMap<u128, Proposal>,
-        proposal_count: u128
+        proposal_count: u128,
+        token_price: Decimal,
+
+        collected_xrd: Vault,
+        received_free_tokens: HashSet<ComponentAddress>,
+        // collected_insider_passes : Vault
     }
 
     impl Dao {
-        pub fn instantiate_dao() -> Global<Dao> {
+        pub fn instantiate_dao(price: Decimal) -> Global<Dao> {
             let my_bucket: Bucket = ResourceBuilder::new_fungible(OwnerRole::None)
                 .divisibility(DIVISIBILITY_MAXIMUM)
                 .metadata(metadata! {
@@ -30,29 +56,55 @@ mod dao {
                 .into();
 
             Self {
-                sample_vault: Vault::with_bucket(my_bucket),
+                insider_pass: Vault::with_bucket(my_bucket),
                 proposals: HashMap::new(),
-                proposal_count: 0
+                proposal_count: 0,
+                token_price: price,
+                collected_xrd: Vault::new(XRD),
+                received_free_tokens: HashSet::new(),
+                // collected_insider_passes : Vault::new(IP)
             }
             .instantiate()
             .prepare_to_globalize(OwnerRole::None)
             .globalize()
         }
 
-        //one token can be given away
-        //other token needs to be purchased
-        pub fn get_first_insider_pass(&mut self) -> Bucket {
-            info!(
-                "DAO welcomes more: {} members. Now giving away a first free INSIDER PASS membership token!",
-                self.sample_vault.amount() - 1
-            );
-
-            self.sample_vault.take(1)
+        pub fn get_status_of_governance_token(&self) -> StatusOfGovToken {
+            StatusOfGovToken {
+                price: self.token_price,
+                amount: self.insider_pass.amount(),
+            }
         }
 
-        pub fn create_a_proposal(&mut self, description: String) -> u128 {
+        pub fn get_first_insider_pass(&mut self, your_address : ComponentAddress) -> Bucket {
 
+
+            assert!(!self.received_free_tokens.contains(&your_address), "You have already received a free token");
+
+            info!(
+                "DAO welcomes more: {} members. And gives away a first free INSIDER PASS membership token!",
+                self.insider_pass.amount() - 1
+            );
+
+             self.received_free_tokens.insert(your_address);
+
+            info!(
+                "you have got your first free token. Just go and check your account balance"
+            );
+
+            self.insider_pass.take(1)
+        }
+
+        pub fn create_a_proposal(
+            &mut self,
+            description: String,
+            mut payment: Bucket,
+            creator: ComponentAddress,
+        ) -> u128 {
             let proposal_id = self.proposal_count;
+
+            let our_share = payment.take(1);
+            our_share.burn();
 
             self.proposals.insert(
                 proposal_id,
@@ -60,15 +112,13 @@ mod dao {
                     description,
                     votes_for: Decimal::zero(),
                     votes_against: Decimal::zero(),
+                    creator,
                 },
             );
 
             self.proposal_count += 1;
 
-            info!(
-                "your proposal has been submitted with id : {}",
-                proposal_id
-            );
+            info!("your proposal has been submitted with id : {}", proposal_id);
 
             proposal_id
         }
@@ -89,17 +139,53 @@ mod dao {
                 .map(|p| (p.votes_for, p.votes_against))
         }
 
+        pub fn buy_insider_pass_token(&mut self, mut payment: Bucket) -> (Bucket, Bucket) {
+            // take our price in XRD out of the payment
+            // if the caller has sent too few, or sent something other than XRD, they'll get a runtime error
+            let our_share = payment.take(self.token_price);
+            self.collected_xrd.put(our_share);
+
+            // we could have simplified the above into a single line, like so:
+            // self.collected_xrd.put(payment.take(self.price));
+
+            // return a tuple containing a gumball, plus whatever change is left on the input payment (if any)
+            // if we're out of gumballs to give, we'll see a runtime error when we try to grab one
+            (self.insider_pass.take(1), payment)
+        }
+
+        pub fn set_price(&mut self, price: Decimal) {
+            self.token_price = price
+        }
+
+        pub fn withdraw_earnings(&mut self) -> Bucket {
+            self.collected_xrd.take_all()
+        }
+
+        
+        // pub fn get_my_created_proposals(&self, creator: ComponentAddress) -> Vec<(u128, Proposal)> {
+        //     self.proposals.iter()
+        //         .filter(|(_, proposal)| proposal.creator == creator)
+        //         .map(|(&id, &proposal)| (id, proposal.clone()))
+        //         .collect()
+        // }
+        
+
+        // pub fn get_all_proposals(&self) -> Vec<(u128, Proposal)> {
+        //     self.proposals
+        //         .iter()
+        //         .map(|(&id, proposal)| (id, proposal.clone()))
+        //         .collect()
+        // }
+
         //function I will make :
         //get_all_proposals
         //store_information_of_proposal_creator
         //condition check - Address having INSIDER PASS should be able to create proposal, cast a vote
-
-
     }
 }
 
 //instantiate
-//resim call-function package_sim1pk3cmat8st4ja2ms8mjqy2e9ptk8y6cx40v4qnfrkgnxcp2krkpr92 Dao instantiate_dao
+//resim call-function package_sim1pk6e5spka5nump4mjj5nhk0cq85xxmyw9cqxq2vn3kfg3jy0yugg80 Dao instantiate_dao
 
 //component balance
 //resim show component_sim1crkp7q8sfhg7xa0xvqtdjezltj3hams2hrk4ztzqs2c90sy0cslv6a
@@ -121,7 +207,3 @@ mod dao {
 
 //call_results
 //resim call-method component_sim1crkp7q8sfhg7xa0xvqtdjezltj3hams2hrk4ztzqs2c90sy0cslv6a results 0
-
-
-
-
