@@ -31,14 +31,12 @@ mod dao {
     //     }
     // }
 
-    use std::clone;
 
     struct Dao {
         insider_pass: Vault,
         proposals: HashMap<u128, Proposal>,
         proposal_count: u128,
         token_price: Decimal,
-
         collected_xrd: Vault,
         received_free_tokens: HashSet<ComponentAddress>,
         // collected_insider_passes : Vault
@@ -78,21 +76,20 @@ mod dao {
             }
         }
 
-        pub fn get_first_insider_pass(&mut self, your_address : ComponentAddress) -> Bucket {
-
-
-            assert!(!self.received_free_tokens.contains(&your_address), "You have already received a free token");
+        pub fn get_first_insider_pass(&mut self, your_address: ComponentAddress) -> Bucket {
+            assert!(
+                !self.received_free_tokens.contains(&your_address),
+                "You have already received a free token"
+            );
 
             info!(
                 "DAO welcomes more: {} members. And gives away a first free INSIDER PASS membership token!",
                 self.insider_pass.amount() - 1
             );
 
-             self.received_free_tokens.insert(your_address);
+            self.received_free_tokens.insert(your_address);
 
-            info!(
-                "you have got your first free token. Just go and check your account balance"
-            );
+            info!("you have got your first free token. Just go and check your account balance");
 
             self.insider_pass.take(1)
         }
@@ -125,13 +122,20 @@ mod dao {
             proposal_id
         }
 
-        pub fn cast_a_vote(&mut self, proposal_id: u128, support: bool) {
+        pub fn cast_a_vote(
+            &mut self,
+            mut payment: Bucket,
+            amount: Decimal,
+            proposal_id: u128,
+            support: bool,
+        ) {
             let proposal = self.proposals.get_mut(&proposal_id).unwrap();
-
+            let our_share = payment.take(amount);
+            our_share.burn();
             if support {
-                proposal.votes_for += Decimal::one();
+                proposal.votes_for +=  10000 * Decimal::one();
             } else {
-                proposal.votes_against += Decimal::one();
+                proposal.votes_against += 10000 * Decimal::one();
             }
         }
 
@@ -164,28 +168,39 @@ mod dao {
         }
 
         pub fn get_my_created_proposals(&self, creator: ComponentAddress) -> Vec<(u128, Proposal)> {
-            self.proposals.iter()
+            self.proposals
+                .iter()
                 .filter(|(_, proposal)| proposal.creator == creator)
-                .map(|(&id, proposal)| (id, Proposal {
-                    description: proposal.description.clone(),
-                    votes_for: proposal.votes_for,
-                    votes_against: proposal.votes_against,
-                    creator: proposal.creator,
-                }))
+                .map(|(&id, proposal)| {
+                    (
+                        id,
+                        Proposal {
+                            description: proposal.description.clone(),
+                            votes_for: proposal.votes_for,
+                            votes_against: proposal.votes_against,
+                            creator: proposal.creator,
+                        },
+                    )
+                })
                 .collect()
         }
 
         pub fn get_all_proposals(&self) -> Vec<(u128, Proposal)> {
-            self.proposals.iter()
-                .map(|(&id, proposal)| (id, Proposal {
-                    description: proposal.description.clone(),
-                    votes_for: proposal.votes_for,
-                    votes_against: proposal.votes_against,
-                    creator: proposal.creator,
-                }))
+            self.proposals
+                .iter()
+                .map(|(&id, proposal)| {
+                    (
+                        id,
+                        Proposal {
+                            description: proposal.description.clone(),
+                            votes_for: proposal.votes_for,
+                            votes_against: proposal.votes_against,
+                            creator: proposal.creator,
+                        },
+                    )
+                })
                 .collect()
         }
-        
 
         //function I will make :
         //get_all_proposals
