@@ -17,19 +17,22 @@ pub struct StatusOfGovToken {
 #[blueprint]
 mod dao {
 
-    // enable_method_auth! {
-    //     // decide which methods are public and which are restricted to the component's owner
-    //     methods {
-    //         buy_insider_pass_token => PUBLIC;
-    //         get_status_of_governance_token => PUBLIC;
-    //         cast_a_vote => PUBLIC;
-    //         create_a_proposal => PUBLIC;
-    //         get_first_insider_pass => PUBLIC;
-    //         results => PUBLIC;
-    //         set_price => restrict_to: [OWNER];
-    //         withdraw_treasury => restrict_to: [OWNER];
-    //     }
-    // }
+    enable_method_auth! {
+        // decide which methods are public and which are restricted to the component's owner
+        methods {
+            
+            get_status_of_governance_token => PUBLIC;
+            get_first_free_insider_pass => PUBLIC;
+            buy_insider_pass_token => PUBLIC;
+            create_a_proposal => PUBLIC;
+            get_my_created_proposals => PUBLIC;
+            get_all_proposals => PUBLIC;
+            cast_a_vote => PUBLIC;
+            results => PUBLIC;
+            set_insider_pass_price => restrict_to: [OWNER];
+            withdraw_treasury => restrict_to: [OWNER];
+        }
+    }
 
     struct Dao {
         insider_pass: Vault,
@@ -107,7 +110,7 @@ mod dao {
             description: String,
             mut payment: Bucket,
             creator: ComponentAddress,
-        ) -> (u128, Bucket, Bucket)  {
+        ) -> (u128, Bucket, Bucket) {
             let proposal_id = self.proposal_count;
 
             let our_share = payment.take(1);
@@ -131,81 +134,6 @@ mod dao {
 
             (proposal_id, self.insider_pass.take(0), payment)
         }
-
-        pub fn show_creator(creator: ComponentAddress) -> ComponentAddress {
-            creator
-        }
-
-        pub fn put_xrd_in_treasury(&mut self, mut payment: Bucket) -> (Bucket, Bucket) {
-            let our_share = payment.take(1);
-            self.collected_xrd_treasury.put(our_share);
-            (self.insider_pass.take(0), payment)
-        }
-
-        // pub fn get_xrd_treasury(&self) -> Vault {
-        //     self.collected_xrd_treasury
-        // }
-
-        pub fn create_a_proposal_using_xrd(
-            &mut self,
-            description: String,
-            mut payment: Bucket,
-            creator: ComponentAddress,
-        ) -> (u128, Bucket, Bucket) {
-            let proposal_id = self.proposal_count;
-
-            let our_share = payment.take(1);
-            self.collected_xrd_treasury.put(our_share);
-
-            // our_share.burn();
-
-            self.proposals.insert(
-                proposal_id,
-                Proposal {
-                    description,
-                    votes_for: Decimal::zero(),
-                    votes_against: Decimal::zero(),
-                    creator,
-                },
-            );
-
-            self.proposal_count += 1;
-
-            info!("your proposal has been submitted with id : {}", proposal_id);
-
-            (proposal_id, self.insider_pass.take(0), payment)
-        }
-
-        pub fn create_a_proposal_using_xrd_2(
-            &mut self,
-            description: String,
-            creator: ComponentAddress,
-        ) -> u128 {
-            let proposal_id = self.proposal_count;
-
-            // let our_share = payment.take(1);
-            // self.collected_xrd_treasury.put(our_share);
-
-            // our_share.burn();
-
-            self.proposals.insert(
-                proposal_id,
-                Proposal {
-                    description,
-                    votes_for: Decimal::zero(),
-                    votes_against: Decimal::zero(),
-                    creator,
-                },
-            );
-
-            self.proposal_count += 1;
-
-            info!("your proposal has been submitted with id : {}", proposal_id);
-
-            proposal_id
-        }
-
-        
 
         pub fn get_my_created_proposals(&self, creator: ComponentAddress) -> Vec<(u128, Proposal)> {
             self.proposals
@@ -241,16 +169,6 @@ mod dao {
                 })
                 .collect()
         }
-
-        // pub fn cast_a_vote(&mut self, proposal_id: u128, support: bool) {
-        //     let proposal = self.proposals.get_mut(&proposal_id).unwrap();
-
-        //     if support {
-        //         proposal.votes_for += Decimal::one();
-        //     } else {
-        //         proposal.votes_against += Decimal::one();
-        //     }
-        // }
 
         pub fn cast_a_vote(
             &mut self,
@@ -317,11 +235,8 @@ mod dao {
 //call_create_a_proposal
 //resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 create_a_proposal "I want this platform to bring REWARD TOKENS for vote casters" resource_sim1t4h3kupr5l95w6ufpuysl0afun0gfzzw7ltmk7y68ks5ekqh4cpx9w:1 account_sim1c956qr3kxlgypxwst89j9yf24tjc7zxd4up38x37zr6q4jxdx9rhma
 
-//call get_my_created_proposals 
+//call get_my_created_proposals
 //resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 get_my_created_proposals account_sim1c956qr3kxlgypxwst89j9yf24tjc7zxd4up38x37zr6q4jxdx9rhma
-
-//another proposal using XRD
-//resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 create_a_proposal_using_xrd "introduce NEW TOKEN STANDARD" resource_sim1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxakj8n3:1 account_sim1c956qr3kxlgypxwst89j9yf24tjc7zxd4up38x37zr6q4jxdx9rhma
 
 //call_cast_a_vote
 //resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 cast_a_vote resource_sim1t4h3kupr5l95w6ufpuysl0afun0gfzzw7ltmk7y68ks5ekqh4cpx9w:1 1 0 true
@@ -332,7 +247,14 @@ mod dao {
 //     amount: Decimal,
 //     proposal_id: u128,
 //     support: bool,
-// ) 
+// )
 
 //call_results
 //resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 results 0
+
+
+// SET_INSIDER_PASS_PRICE
+// resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 set_insider_pass_price 5
+
+// WITHRAW_TREASURY
+// resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 withdraw_treasury 
