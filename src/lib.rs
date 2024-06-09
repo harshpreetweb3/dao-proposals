@@ -17,19 +17,21 @@ pub struct StatusOfGovToken {
 #[blueprint]
 mod dao {
 
-    enable_method_auth! {
-        // decide which methods are public and which are restricted to the component's owner
-        methods {
-            buy_insider_pass_token => PUBLIC;
-            get_status_of_governance_token => PUBLIC;
-            cast_a_vote => PUBLIC;
-            create_a_proposal => PUBLIC;
-            get_first_insider_pass => PUBLIC;
-            results => PUBLIC;
-            set_price => restrict_to: [OWNER];
-            withdraw_earnings => restrict_to: [OWNER];
-        }
-    }
+    // enable_method_auth! {
+    //     // decide which methods are public and which are restricted to the component's owner
+    //     methods {
+    //         buy_insider_pass_token => PUBLIC;
+    //         get_status_of_governance_token => PUBLIC;
+    //         cast_a_vote => PUBLIC;
+    //         create_a_proposal => PUBLIC;
+    //         get_first_insider_pass => PUBLIC;
+    //         results => PUBLIC;
+    //         set_price => restrict_to: [OWNER];
+    //         withdraw_earnings => restrict_to: [OWNER];
+    //     }
+    // }
+
+    use std::clone;
 
     struct Dao {
         insider_pass: Vault,
@@ -161,21 +163,29 @@ mod dao {
             self.collected_xrd.take_all()
         }
 
-        
-        // pub fn get_my_created_proposals(&self, creator: ComponentAddress) -> Vec<(u128, Proposal)> {
-        //     self.proposals.iter()
-        //         .filter(|(_, proposal)| proposal.creator == creator)
-        //         .map(|(&id, &proposal)| (id, proposal.clone()))
-        //         .collect()
-        // }
-        
+        pub fn get_my_created_proposals(&self, creator: ComponentAddress) -> Vec<(u128, Proposal)> {
+            self.proposals.iter()
+                .filter(|(_, proposal)| proposal.creator == creator)
+                .map(|(&id, proposal)| (id, Proposal {
+                    description: proposal.description.clone(),
+                    votes_for: proposal.votes_for,
+                    votes_against: proposal.votes_against,
+                    creator: proposal.creator,
+                }))
+                .collect()
+        }
 
-        // pub fn get_all_proposals(&self) -> Vec<(u128, Proposal)> {
-        //     self.proposals
-        //         .iter()
-        //         .map(|(&id, proposal)| (id, proposal.clone()))
-        //         .collect()
-        // }
+        pub fn get_all_proposals(&self) -> Vec<(u128, Proposal)> {
+            self.proposals.iter()
+                .map(|(&id, proposal)| (id, Proposal {
+                    description: proposal.description.clone(),
+                    votes_for: proposal.votes_for,
+                    votes_against: proposal.votes_against,
+                    creator: proposal.creator,
+                }))
+                .collect()
+        }
+        
 
         //function I will make :
         //get_all_proposals
