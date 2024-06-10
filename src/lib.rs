@@ -18,7 +18,7 @@ pub struct StatusOfGovToken {
 mod dao {
 
     enable_method_auth! {
-        // decide which methods are public and which are restricted to the component's owner
+        
         methods {
             
             get_status_of_governance_token => PUBLIC;
@@ -205,6 +205,8 @@ mod dao {
     }
 }
 
+// THESE COMMANDS WILL BE USED IN SEQUENCE TO RUN THIS PROJECT
+
 //resim reset
 
 //create_account
@@ -241,17 +243,8 @@ mod dao {
 //call_cast_a_vote
 //resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 cast_a_vote resource_sim1t4h3kupr5l95w6ufpuysl0afun0gfzzw7ltmk7y68ks5ekqh4cpx9w:1 1 0 true
 
-//(
-//     &mut self,
-//     mut payment: Bucket,
-//     amount: Decimal,
-//     proposal_id: u128,
-//     support: bool,
-// )
-
 //call_results
 //resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 results 0
-
 
 // SET_INSIDER_PASS_PRICE
 // resim call-method component_sim1cp4qmcqlmtsqns8ckwjttvffjk4j4smkhlkt0qv94caftlj5u2xve2 set_insider_pass_price 5
